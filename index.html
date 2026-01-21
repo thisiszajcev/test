@@ -2,40 +2,146 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Погода в Пятигорске</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TG Snake</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        body { font-family: sans-serif; background-color: var(--tg-theme-bg-color); color: var(--tg-theme-text-color); text-align: center; padding: 20px; }
-        .temp { font-size: 3rem; font-weight: bold; }
-        .city { font-size: 1.5rem; color: var(--tg-theme-hint-color); }
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: var(--tg-theme-bg-color, #ffffff);
+            color: var(--tg-theme-text-color, #000000);
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        canvas {
+            border: 2px solid var(--tg-theme-button-color, #248bed);
+            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
+            border-radius: 8px;
+            touch-action: none;
+        }
+        .score {
+            font-size: 24px;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .controls {
+            margin-top: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 60px);
+            gap: 10px;
+        }
+        button {
+            width: 60px;
+            height: 60px;
+            background-color: var(--tg-theme-button-color, #248bed);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            border-radius: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .up { grid-column: 2; }
+        .left { grid-column: 1; }
+        .down { grid-column: 2; }
+        .right { grid-column: 3; }
     </style>
 </head>
 <body>
-    <div class="city">Пятигорск</div>
-    <div id="temp" class="temp">Загрузка...</div>
-    <div id="desc">Пожалуйста, подождите</div>
+
+    <div class="score">Счет: <span id="scoreVal">0</span></div>
+    <canvas id="gameCanvas" width="300" height="300"></canvas>
+
+    <div class="controls">
+        <button class="up" onclick="changeDir('up')">↑</button>
+        <button class="left" onclick="changeDir('left')">←</button>
+        <button class="down" onclick="changeDir('down')">↓</button>
+        <button class="right" onclick="changeDir('right')">→</button>
+    </div>
 
     <script>
-        // Инициализация Telegram Mini App
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на всё окно
+        tg.expand(); // Расширяем на все окно
+        tg.ready();
 
-        async function fetchWeather() {
-            const API_KEY = 'ВАШ_API_KEY'; // Нужно получить на сайте погоды
-            const city = 'Pyatigorsk';
-            try {
-                const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&lang=ru&appid=${API_KEY}`);
-                const data = await response.json();
-                
-                document.getElementById('temp').innerText = Math.round(data.main.temp) + '°C';
-                document.getElementById('desc').innerText = data.weather[0].description;
-            } catch (e) {
-                document.getElementById('desc').innerText = 'Ошибка загрузки';
-            }
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("scoreVal");
+
+        let box = 20;
+        let score = 0;
+        let snake = [{ x: 10 * box, y: 10 * box }];
+        let food = {
+            x: Math.floor(Math.random() * 15) * box,
+            y: Math.floor(Math.random() * 15) * box
+        };
+        let d = "right";
+
+        function changeDir(dir) {
+            if (dir == "up" && d != "down") d = "up";
+            if (dir == "down" && d != "up") d = "down";
+            if (dir == "left" && d != "right") d = "left";
+            if (dir == "right" && d != "left") d = "right";
         }
 
-        fetchWeather();
+        function draw() {
+            ctx.fillStyle = tg.themeParams.secondary_bg_color || "#f0f0f0";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < snake.length; i++) {
+                ctx.fillStyle = (i == 0) ? (tg.themeParams.button_color || "#248bed") : "#888";
+                ctx.fillRect(snake[i].x, snake[i].y, box, box);
+                ctx.strokeStyle = "#fff";
+                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+            }
+
+            ctx.fillStyle = "#e74c3c";
+            ctx.fillRect(food.x, food.y, box, box);
+
+            let snakeX = snake[0].x;
+            let snakeY = snake[0].y;
+
+            if (d == "left") snakeX -= box;
+            if (d == "up") snakeY -= box;
+            if (d == "right") snakeX += box;
+            if (d == "down") snakeY += box;
+
+            if (snakeX == food.x && snakeY == food.y) {
+                score++;
+                scoreElement.innerText = score;
+                food = {
+                    x: Math.floor(Math.random() * 15) * box,
+                    y: Math.floor(Math.random() * 15) * box
+                };
+                tg.HapticFeedback.impactOccurred('light'); // Вибрация при поедании
+            } else {
+                snake.pop();
+            }
+
+            let newHead = { x: snakeX, y: snakeY };
+
+            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
+                clearInterval(game);
+                tg.showAlert("Игра окончена! Ваш счет: " + score, () => {
+                    location.reload(); // Перезапуск
+                });
+            }
+
+            snake.unshift(newHead);
+        }
+
+        function collision(head, array) {
+            for (let i = 0; i < array.length; i++) {
+                if (head.x == array[i].x && head.y == array[i].y) return true;
+            }
+            return false;
+        }
+
+        let game = setInterval(draw, 150);
     </script>
 </body>
 </html>
