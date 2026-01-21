@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>TG Snake</title>
+    <title>Magic 8 Ball</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
@@ -12,136 +12,176 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             background-color: var(--tg-theme-bg-color, #ffffff);
             color: var(--tg-theme-text-color, #000000);
-            overflow: hidden;
-            font-family: sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            box-sizing: border-box;
         }
-        canvas {
-            border: 2px solid var(--tg-theme-button-color, #248bed);
-            background-color: var(--tg-theme-secondary-bg-color, #f0f0f0);
-            border-radius: 8px;
-            touch-action: none;
+
+        .ball-container {
+            width: 250px;
+            height: 250px;
+            background-color: var(--tg-theme-secondary-bg-color, #343a40); /* Darker for contrast */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.1s ease-out;
+            margin-bottom: 30px;
         }
-        .score {
-            font-size: 24px;
-            margin-bottom: 10px;
+
+        .ball-container.shaking {
+            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both infinite;
+            transform: translate3d(0, 0, 0);
+            backface-visibility: hidden;
+            perspective: 1000px;
+        }
+
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(+2px, 0, 0); }
+            30%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(+4px, 0, 0); }
+            50% { transform: translate3d(-4px, 0, 0); }
+        }
+
+        .triangle-window {
+            width: 140px;
+            height: 120px;
+            background-color: var(--tg-theme-button-color, #007bff); /* Blue */
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding-top: 20px; /* Adjust for triangle shape */
+            color: var(--tg-theme-button-text-color, #ffffff);
+            font-size: 16px;
             font-weight: bold;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
         }
-        .controls {
-            margin-top: 20px;
-            display: grid;
-            grid-template-columns: repeat(3, 60px);
-            gap: 10px;
+
+        #answer {
+            max-width: 120px;
+            line-height: 1.3;
         }
-        button {
-            width: 60px;
-            height: 60px;
+
+        .question-input {
+            width: 80%;
+            max-width: 300px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--tg-theme-hint-color, #ccc);
+            border-radius: 8px;
+            background-color: var(--tg-theme-field-bg-color, #f0f0f0);
+            color: var(--tg-theme-text-color, #000);
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        .question-input::placeholder {
+            color: var(--tg-theme-hint-color, #999);
+        }
+
+        .reset-button {
             background-color: var(--tg-theme-button-color, #248bed);
             color: var(--tg-theme-button-text-color, #ffffff);
+            padding: 12px 25px;
             border: none;
-            border-radius: 10px;
-            font-size: 20px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
         }
-        .up { grid-column: 2; }
-        .left { grid-column: 1; }
-        .down { grid-column: 2; }
-        .right { grid-column: 3; }
+        .reset-button:active {
+             background-color: var(--tg-theme-button-color, #248bed); /* для мобильных */
+             opacity: 0.8;
+        }
+
     </style>
 </head>
 <body>
 
-    <div class="score">Счет: <span id="scoreVal">0</span></div>
-    <canvas id="gameCanvas" width="300" height="300"></canvas>
+    <input type="text" id="questionInput" class="question-input" placeholder="Задайте свой вопрос...">
 
-    <div class="controls">
-        <button class="up" onclick="changeDir('up')">↑</button>
-        <button class="left" onclick="changeDir('left')">←</button>
-        <button class="down" onclick="changeDir('down')">↓</button>
-        <button class="right" onclick="changeDir('right')">→</button>
+    <div class="ball-container" id="magicBall">
+        <div class="triangle-window">
+            <span id="answer">Нажми на меня!</span>
+        </div>
     </div>
+
+    <button class="reset-button" onclick="resetBall()">Новый вопрос</button>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Расширяем на все окно
+        tg.expand();
         tg.ready();
 
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const scoreElement = document.getElementById("scoreVal");
+        const answers = [
+            "Да, определенно.",
+            "Без сомнений.",
+            "Это так.",
+            "Действительно.",
+            "Можете быть уверены в этом.",
+            "Как я вижу, да.",
+            "Вероятнее всего.",
+            "Хорошие перспективы.",
+            "Да.",
+            "Знаки указывают на 'да'.",
+            "Попробуй позже.",
+            "Спроси еще раз.",
+            "Не могу сказать сейчас.",
+            "Сконцентрируйся и спроси снова.",
+            "Не рассчитывай на это.",
+            "Мой ответ — нет.",
+            "Мои источники говорят 'нет'.",
+            "Перспективы не очень хорошие.",
+            "Очень сомнительно."
+        ];
 
-        let box = 20;
-        let score = 0;
-        let snake = [{ x: 10 * box, y: 10 * box }];
-        let food = {
-            x: Math.floor(Math.random() * 15) * box,
-            y: Math.floor(Math.random() * 15) * box
-        };
-        let d = "right";
+        const magicBall = document.getElementById('magicBall');
+        const answerDisplay = document.getElementById('answer');
+        const questionInput = document.getElementById('questionInput');
 
-        function changeDir(dir) {
-            if (dir == "up" && d != "down") d = "up";
-            if (dir == "down" && d != "up") d = "down";
-            if (dir == "left" && d != "right") d = "left";
-            if (dir == "right" && d != "left") d = "right";
-        }
+        magicBall.addEventListener('click', showAnswer);
 
-        function draw() {
-            ctx.fillStyle = tg.themeParams.secondary_bg_color || "#f0f0f0";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = (i == 0) ? (tg.themeParams.button_color || "#248bed") : "#888";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
-                ctx.strokeStyle = "#fff";
-                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
-            }
-
-            ctx.fillStyle = "#e74c3c";
-            ctx.fillRect(food.x, food.y, box, box);
-
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-
-            if (d == "left") snakeX -= box;
-            if (d == "up") snakeY -= box;
-            if (d == "right") snakeX += box;
-            if (d == "down") snakeY += box;
-
-            if (snakeX == food.x && snakeY == food.y) {
-                score++;
-                scoreElement.innerText = score;
-                food = {
-                    x: Math.floor(Math.random() * 15) * box,
-                    y: Math.floor(Math.random() * 15) * box
-                };
-                tg.HapticFeedback.impactOccurred('light'); // Вибрация при поедании
-            } else {
-                snake.pop();
-            }
-
-            let newHead = { x: snakeX, y: snakeY };
-
-            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
-                clearInterval(game);
-                tg.showAlert("Игра окончена! Ваш счет: " + score, () => {
-                    location.reload(); // Перезапуск
+        function showAnswer() {
+            if (questionInput.value.trim() === "") {
+                tg.showAlert("Пожалуйста, сначала задайте вопрос!", () => {
+                    questionInput.focus();
                 });
+                return;
             }
 
-            snake.unshift(newHead);
+            magicBall.classList.add('shaking');
+            answerDisplay.innerText = "...";
+            tg.HapticFeedback.impactOccurred('heavy'); // Сильная вибрация
+
+            setTimeout(() => {
+                const randomIndex = Math.floor(Math.random() * answers.length);
+                answerDisplay.innerText = answers[randomIndex];
+                magicBall.classList.remove('shaking');
+                tg.HapticFeedback.notificationOccurred('success'); // Вибрация успеха
+                tg.MainButton.setText("Задать новый вопрос").show();
+                tg.MainButton.onClick(resetBall);
+            }, 1000); // Задержка для анимации
         }
 
-        function collision(head, array) {
-            for (let i = 0; i < array.length; i++) {
-                if (head.x == array[i].x && head.y == array[i].y) return true;
-            }
-            return false;
+        function resetBall() {
+            questionInput.value = "";
+            answerDisplay.innerText = "Нажми на меня!";
+            questionInput.focus();
+            tg.MainButton.hide();
         }
 
-        let game = setInterval(draw, 150);
+        // Показать MainButton только после первого ответа
+        tg.MainButton.hide();
+
     </script>
 </body>
 </html>
