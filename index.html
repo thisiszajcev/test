@@ -3,185 +3,155 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic 8 Ball</title>
+    <title>TG Identity Card</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #ffffff);
+            --text-color: var(--tg-theme-text-color, #000000);
+            --hint-color: var(--tg-theme-hint-color, #999999);
+            --button-color: var(--tg-theme-button-color, #248bed);
+            --button-text: var(--tg-theme-button-text-color, #ffffff);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+        }
+
         body {
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            background-color: var(--tg-theme-bg-color, #ffffff);
-            color: var(--tg-theme-text-color, #000000);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 20px;
+            background-color: var(--secondary-bg);
+            color: var(--text-color);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
             box-sizing: border-box;
         }
 
-        .ball-container {
-            width: 250px;
-            height: 250px;
-            background-color: var(--tg-theme-secondary-bg-color, #343a40); /* Darker for contrast */
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), inset 0 0 30px rgba(0, 0, 0, 0.5);
-            position: relative;
-            cursor: pointer;
-            transition: transform 0.1s ease-out;
-            margin-bottom: 30px;
-        }
-
-        .ball-container.shaking {
-            animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both infinite;
-            transform: translate3d(0, 0, 0);
-            backface-visibility: hidden;
-            perspective: 1000px;
-        }
-
-        @keyframes shake {
-            10%, 90% { transform: translate3d(-1px, 0, 0); }
-            20%, 80% { transform: translate3d(+2px, 0, 0); }
-            30%, 70% { transform: translate3d(-4px, 0, 0); }
-            40%, 60% { transform: translate3d(+4px, 0, 0); }
-            50% { transform: translate3d(-4px, 0, 0); }
-        }
-
-        .triangle-window {
-            width: 140px;
-            height: 120px;
-            background-color: var(--tg-theme-button-color, #007bff); /* Blue */
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        .card {
+            background-color: var(--bg-color);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 350px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             text-align: center;
-            padding-top: 20px; /* Adjust for triangle shape */
-            color: var(--tg-theme-button-text-color, #ffffff);
-            font-size: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 8px;
+            background: var(--button-color);
+        }
+
+        .avatar {
+            width: 100px;
+            height: 100px;
+            background: var(--button-color);
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            color: white;
             font-weight: bold;
-            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
 
-        #answer {
-            max-width: 120px;
-            line-height: 1.3;
+        h1 { margin: 10px 0 5px; font-size: 24px; }
+        p { margin: 0; color: var(--hint-color); font-size: 16px; }
+
+        .info-grid {
+            margin-top: 25px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            text-align: left;
         }
 
-        .question-input {
-            width: 80%;
-            max-width: 300px;
-            padding: 12px 15px;
-            margin-bottom: 20px;
-            border: 1px solid var(--tg-theme-hint-color, #ccc);
-            border-radius: 8px;
-            background-color: var(--tg-theme-field-bg-color, #f0f0f0);
-            color: var(--tg-theme-text-color, #000);
-            font-size: 16px;
-            box-sizing: border-box;
-            outline: none;
-        }
-        .question-input::placeholder {
-            color: var(--tg-theme-hint-color, #999);
+        .info-item {
+            background: var(--secondary-bg);
+            padding: 10px;
+            border-radius: 12px;
         }
 
-        .reset-button {
-            background-color: var(--tg-theme-button-color, #248bed);
-            color: var(--tg-theme-button-text-color, #ffffff);
-            padding: 12px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        .reset-button:active {
-             background-color: var(--tg-theme-button-color, #248bed); /* для мобильных */
-             opacity: 0.8;
-        }
+        .info-label { font-size: 11px; color: var(--hint-color); text-transform: uppercase; margin-bottom: 4px; }
+        .info-value { font-size: 14px; font-weight: 600; }
 
+        .premium-badge {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: linear-gradient(45deg, #0088cc, #00c6ff);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-    <input type="text" id="questionInput" class="question-input" placeholder="Задайте свой вопрос...">
+    <div class="card">
+        <div id="avatar" class="avatar">?</div>
+        <h1 id="full_name">User Name</h1>
+        <p id="username">@username</p>
+        
+        <div id="premium_status"></div>
 
-    <div class="ball-container" id="magicBall">
-        <div class="triangle-window">
-            <span id="answer">Нажми на меня!</span>
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">ID Пользователя</div>
+                <div id="user_id" class="info-value">—</div>
+            </div>
+            <div class="info-item">
+                <div class="info-label">Язык (Локаль)</div>
+                <div id="language" class="info-value">—</div>
+            </div>
         </div>
     </div>
-
-    <button class="reset-button" onclick="resetBall()">Новый вопрос</button>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
         tg.ready();
 
-        const answers = [
-            "Да, определенно.",
-            "Без сомнений.",
-            "Это так.",
-            "Действительно.",
-            "Можете быть уверены в этом.",
-            "Как я вижу, да.",
-            "Вероятнее всего.",
-            "Хорошие перспективы.",
-            "Да.",
-            "Знаки указывают на 'да'.",
-            "Попробуй позже.",
-            "Спроси еще раз.",
-            "Не могу сказать сейчас.",
-            "Сконцентрируйся и спроси снова.",
-            "Не рассчитывай на это.",
-            "Мой ответ — нет.",
-            "Мои источники говорят 'нет'.",
-            "Перспективы не очень хорошие.",
-            "Очень сомнительно."
-        ];
+        // Получаем данные пользователя
+        const user = tg.initDataUnsafe?.user;
 
-        const magicBall = document.getElementById('magicBall');
-        const answerDisplay = document.getElementById('answer');
-        const questionInput = document.getElementById('questionInput');
+        if (user) {
+            // Имя и фамилия
+            document.getElementById('full_name').innerText = `${user.first_name} ${user.last_name || ''}`;
+            
+            // Username
+            document.getElementById('username').innerText = user.username ? `@${user.username}` : 'скрыт';
+            
+            // ID
+            document.getElementById('user_id').innerText = user.id;
+            
+            // Язык
+            document.getElementById('language').innerText = user.language_code.toUpperCase();
 
-        magicBall.addEventListener('click', showAnswer);
+            // Первая буква для аватара
+            document.getElementById('avatar').innerText = user.first_name.charAt(0);
 
-        function showAnswer() {
-            if (questionInput.value.trim() === "") {
-                tg.showAlert("Пожалуйста, сначала задайте вопрос!", () => {
-                    questionInput.focus();
-                });
-                return;
+            // Проверка Premium
+            if (user.is_premium) {
+                document.getElementById('premium_status').innerHTML = '<span class="premium-badge">⭐ PREMIUM USER</span>';
             }
-
-            magicBall.classList.add('shaking');
-            answerDisplay.innerText = "...";
-            tg.HapticFeedback.impactOccurred('heavy'); // Сильная вибрация
-
-            setTimeout(() => {
-                const randomIndex = Math.floor(Math.random() * answers.length);
-                answerDisplay.innerText = answers[randomIndex];
-                magicBall.classList.remove('shaking');
-                tg.HapticFeedback.notificationOccurred('success'); // Вибрация успеха
-                tg.MainButton.setText("Задать новый вопрос").show();
-                tg.MainButton.onClick(resetBall);
-            }, 1000); // Задержка для анимации
+        } else {
+            document.getElementById('full_name').innerText = "Данные не найдены";
         }
 
-        function resetBall() {
-            questionInput.value = "";
-            answerDisplay.innerText = "Нажми на меня!";
-            questionInput.focus();
-            tg.MainButton.hide();
-        }
-
-        // Показать MainButton только после первого ответа
-        tg.MainButton.hide();
-
+        // Нативная кнопка Telegram
+        tg.MainButton.setText("ЗАКРЫТЬ КАРТОЧКУ").show().onClick(() => {
+            tg.HapticFeedback.notificationOccurred('warning');
+            tg.close();
+        });
     </script>
 </body>
 </html>
